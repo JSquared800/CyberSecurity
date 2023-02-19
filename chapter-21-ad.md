@@ -328,5 +328,5 @@ The Adminstrator has an active session on the domain controller from 172.16.246.
 
 Instead of attacking high values groups like the Domain Controller, we can target service accounts. &#x20;
 
-When an application is executed, it will be done through an operating system user. However, services launched by the system use the context of a Service Account.
+When an application is executed, it will be done through an operating system user. However, services launched by the system use the context of a Service Account. Test
 
