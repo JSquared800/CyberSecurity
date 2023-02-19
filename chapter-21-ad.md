@@ -64,7 +64,7 @@ Global Group memberships     *Domain Users         *Domain Admins
 The command completed successfully.
 ```
 
-We can see that **** jeff\_admin is a member of the **Domain Admins** group.&#x20;
+We can see that jeff\_admin is a member of the **Domain Admins** group.&#x20;
 
 We can also enumerate all groups in a domain.
 
