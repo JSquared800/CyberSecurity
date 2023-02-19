@@ -158,7 +158,9 @@ Note that domainObj holds the entire domain objetc, which PDC and DistinguishedN
 LDAP://DC01.corp.com/DC=corp,DC=com
 ```
 
-We can now instantiate the DirectorySearcher class with the LDAP path.&#x20;
+We can now instantiate the DirectorySearcher class with the LDAP path, as well as filter and clean up the output for the final script.
+
+#### Final Script&#x20;
 
 ```
 $domainObj = [System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()
@@ -175,8 +177,156 @@ $SearchString += $DistinguishedName
 
 $Searcher = New-Object System.DirectoryServices.DirectorySearcher([ADSI]$SearchString)
 
-$objDomain = New-Object System.DirectoryServices.DirectoryEntry($SearchString, "corp.com\offsec", "lab")
+$objDomain = New-Object System.DirectoryServices.DirectoryEntry
 
 $Searcher.SearchRoot = $objDomain
 
+$Searcher.filter="samAccountType=805306368"
+
+$Result = $Searcher.FindAll()
+
+Foreach($obj in $Result)
+{
+    Foreach($prop in $obj.Properties)
+    {
+        $prop
+    }
+    
+    Write-Host "------------------------"
+}
 ```
+
+We could change the Searcher.filter to something like "name=Jeff\_Admin" if we wanted to just enumerate them.
+
+### Resolving Nested Groups
+
+First we need to locate all the groups and print their names. This can be done by creating a filter for objectClass set to Group and printing the name property.&#x20;
+
+Modified script:
+
+```
+$domainObj = [System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()
+
+$PDC = ($domainObj.PdcRoleOwner).Name
+
+$SearchString = "LDAP://"
+
+$SearchString += $PDC + "/"
+
+$DistinguishedName = "DC=$($domainObj.Name.Replace('.', ',DC='))"
+
+$SearchString += $DistinguishedName
+
+$Searcher = New-Object System.DirectoryServices.DirectorySearcher([ADSI]$SearchString)
+
+$objDomain = New-Object System.DirectoryServices.DirectoryEntry
+
+$Searcher.SearchRoot = $objDomain
+
+$Searcher.filter="(objectClass=Group)"
+
+$Result = $Searcher.FindAll()
+
+Foreach($obj in $Result)
+{
+    $obj.Properties.name
+}
+```
+
+When executed, the script lists all the groups.
+
+Now, we can list the members of Secret\_Group:
+
+```
+...
+
+$Searcher.filter="(name=Secret_Group)"
+
+$Result = $Searcher.FindAll()
+
+Foreach($obj in $Result)
+{
+    $obj.Properties.member
+}
+...
+```
+
+This outputs the names of DistinguishedName group members.
+
+```
+CN=Nested_Group,OU=CorpGroups,DC=corp,DC=com
+```
+
+Looks like Nested\_Group is a member of Secret\_Group. We can enumerate this group by changing the group name to Nested\_Group.
+
+```
+...
+$Searcher.filter="(name=Nested_Group)"
+...
+```
+
+```
+CN=Another_Nested_Group,OU=CorpGroups,DC=corp,DC=com
+```
+
+We can now enumerate Another\_Nested\_Group with similar methodology.
+
+```
+...
+
+$Searcher.filter="(name=Another_Nested_Group)"
+...
+```
+
+```
+CN=Adam,OU=Normal,OU=CorpUsers,DC=corp,DC=com
+```
+
+We can see that Adam is the only member.
+
+### Currently Logged on Users
+
+We want to find currently logged in users now, since we can find passwords or other loot in the cache and steal them.
+
+<figure><img src=".gitbook/assets/image (1).png" alt=""><figcaption></figcaption></figure>
+
+If we manage to compromise a Domain Admin, we have essentially compromised the whole domain. However, we can also compromise other accounts or machines. Note in the picture above that we can compromise Bob, then Alice, then Jeff.&#x20;
+
+To discover any logged on users, we can use PowerView.
+
+```
+PS C:\Tools\active_directory> Import-Module .\PowerView.ps1
+PS C:\Tools\active_directory> Get-NetLoggedon -ComputerName client251 | Format-Table
+
+wkui1_username wkui1_logon_domain wkui1_oth_domains wkui1_logon_server
+-------------- ------------------ ----------------- ------------------
+offsec         corp                                 DC01
+offsec         corp                                 DC01
+CLIENT251$     corp
+CLIENT251$     corp
+CLIENT251$     corp
+CLIENT251$     corp
+CLIENT251$     corp
+CLIENT251$     corp
+CLIENT251$     corp
+CLIENT251$     corp 
+```
+
+We can retrieve active sessions as well.
+
+```
+PS C:\Tools\active_directory> Get-NetSession -ComputerName dc01 | Format-Table
+
+CName           UserName      Time IdleTime ComputerName
+-----           --------      ---- -------- ------------
+\\172.16.246.10 Administrator    8        0 dc01
+```
+
+The Adminstrator has an active session on the domain controller from 172.16.246.10, which is the Windows client. Now we can start compromising accounts.
+
+### Enumeration Through Service Principal Names
+
+Instead of attacking high values groups like the Domain Controller, we can target service accounts. &#x20;
+
+When an application is executed, it will be done through an operating system user. However, services launched by the system use the context of a Service Account.
+
