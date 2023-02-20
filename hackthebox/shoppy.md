@@ -90,7 +90,7 @@ Navigating to the "Search for users" button, since it's the only thing we really
 
 I'll throw in admin to see what it returns.
 
-<figure><img src="../.gitbook/assets/image (22).png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../.gitbook/assets/image (22) (1).png" alt=""><figcaption></figcaption></figure>
 
 So we've got a json return that tells us the username and the password. This is getting interesting, since we've now got credentials and a possible password for the admin. However, putting this password into crackstation yields no results, so I won't bother trying to crack it right now.
 
@@ -100,7 +100,7 @@ Instead, I'll use the same SQL injection payload as before, to hopefully leak al
 
 Sending it and downloading the export gives us exactly what we want! We got a josh user and a hash. This one we can crack in crackstation, which yields the password remembermethisway.
 
-<figure><img src="../.gitbook/assets/image (12).png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../.gitbook/assets/image (12) (1).png" alt=""><figcaption></figcaption></figure>
 
 But trying to ssh into josh with that password doesn't let us in, so we've got these credentials but no way to use them. Right?(Logging into the application with Josh's credentials doesn't change anything, if you were curious).
 
@@ -143,7 +143,7 @@ We've got a subdomain! Adding it to /etc/hosts and going it yields another login
 
 Now, we can put in josh's credentials and successfully log in to find some kind of Discord-Slack hybrid.
 
-<figure><img src="../.gitbook/assets/image.png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../.gitbook/assets/image (12).png" alt=""><figcaption></figcaption></figure>
 
 Browsing a couple channels quickly points us to #Deploy-Machine, which has some credentials we might actually be able to use for ssh.
 
