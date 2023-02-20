@@ -380,8 +380,21 @@ NTLM Authentication is used when a client authenticates to a server by IP instea
 
 While NTLM works by challenge and response, Kerberos uses a ticket system. At high level,s Kerberos client authentication to a service in AD uses a domain controller in the role of a key distribution center, or KDC.
 
-<figure><img src=".gitbook/assets/image.png" alt=""><figcaption></figcaption></figure>
+<figure><img src=".gitbook/assets/image (2).png" alt=""><figcaption></figcaption></figure>
 
 1. When a user logs on, a request is send to the domain controller. This DC has the role of KDC and maintains the Authentication Server service. This request contains a time stamp that is encrypted use a hash from the username and password of the user.
-2. When this is received by the domain controller, it attempts to decrypt the time stamp with the hash. If the decryption process is successful, the authentication is considered successful. It will send an Authentication Server Reply that contains a session key and a Ticket Granting Ticket. The Ticket Granting Ticket cannot be decrypted by the client.
-3. If the user wants to access domain resources, such as a network share
+2. When this is received by the domain controller, it attempts to decrypt the time stamp with the hash. If the decryption process is successful, the authentication is considered successful. It will send an Authentication Server Reply that contains a session key and a Ticket Granting Ticket(TGT). The Ticket Granting Ticket cannot be decrypted by the client.
+3. If the user wants to access domain resources, such as a network share, Exchange mailbox, or another application with a registered SPN, it must contact the KDC. The client will generate a Ticket Granting Service Request packet that consists of the current user and timestamp(encrypted with the session key), the SPN of the resource, and the encrypted TGT. The ticket granting service on the KDC receives the request, and if the SPN exists, the TGT is decrypted using the secret key only known by the KDC.  The session key is extracted from the TGT and used to decrypt the username and timestamp of the request. The KDC then performs several checks:
+   1. The TGT must have a valid timestamp
+   2. The username from the request must match with the TGT
+   3. The client IP address must coincide with the TGT IP address
+4. If all checks are made, the service responds to the client with a ticket granting server reply packet, made of three parts. The first two parts are encrypted using the session key of creation of the TGT and the service ticket is encrypted using the password hash of the service account registered with the SPN in question.
+   1. The SPN to which access has been granted
+   2. A session key to be used between the client and the SPN
+   3. A service ticket with username and group membership as well as the newly-created session key
+5. Once authentication with the KDC is complete and the client has a session key and service ticket, it may continue with authentication. First, it needs to send an **application request**, which includes the username and timestamp encrypted with the session key associated with the service ticket along with the service ticket itself. The application server decrypts the service ticket and extracts the username and session key. It can now decrypt the username from the request and check if the two match.&#x20;
+6. The user is authenticated.
+
+### Cached Credential Storage and Retrieval
+
+Password hashes must be stored somewhere to validate TGT requests. In current versions, these are stored in LSASS memory space. &#x20;

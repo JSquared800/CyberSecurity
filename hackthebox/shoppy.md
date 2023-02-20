@@ -143,7 +143,7 @@ We've got a subdomain! Adding it to /etc/hosts and going it yields another login
 
 Now, we can put in josh's credentials and successfully log in to find some kind of Discord-Slack hybrid.
 
-<figure><img src="../.gitbook/assets/image (2).png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../.gitbook/assets/image.png" alt=""><figcaption></figcaption></figure>
 
 Browsing a couple channels quickly points us to #Deploy-Machine, which has some credentials we might actually be able to use for ssh.
 
