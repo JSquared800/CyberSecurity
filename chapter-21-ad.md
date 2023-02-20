@@ -288,7 +288,7 @@ We can see that Adam is the only member.
 
 We want to find currently logged in users now, since we can find passwords or other loot in the cache and steal them.
 
-<figure><img src=".gitbook/assets/image (1).png" alt=""><figcaption></figcaption></figure>
+<figure><img src=".gitbook/assets/image (1) (1).png" alt=""><figcaption></figcaption></figure>
 
 If we manage to compromise a Domain Admin, we have essentially compromised the whole domain. However, we can also compromise other accounts or machines. Note in the picture above that we can compromise Bob, then Alice, then Jeff.&#x20;
 
@@ -328,5 +328,60 @@ The Adminstrator has an active session on the domain controller from 172.16.246.
 
 Instead of attacking high values groups like the Domain Controller, we can target service accounts. &#x20;
 
-When an application is executed, it will be done through an operating system user. However, services launched by the system use the context of a Service Account. Test
+When an application is executed, it will be done through an operating system user. However, services launched by the system use the context of a Service Account.&#x20;
 
+This means that applications can use certain service accounts like **LocalSystem**, **LocalService**, and **NetworkService**.&#x20;
+
+While certain applications are integrated into AD(i.e. SQL), a unique service instance identifier known as an SPN is used to associated services to their respective accounts.
+
+Enumerating all registered SPNs can give us IP addresses and ports to servers integrated with AD.
+
+Let's edit the script to include SPNs with the string http to check for web servers.
+
+```
+...
+$Searcher.filter="serviceprincipalname=*http*"
+...
+```
+
+This returns a large block of text.
+
+```
+Name                    Value     
+----                    -----     
+givenname               {iis_service}    
+samaccountname          {iis_service}  
+cn                      {iis_service}    
+...
+serviceprincipalname    {HTTP/CorpWebServer.corp.com} 
+distinguishedname       {CN=iis_service,OU=ServiceAccounts,OU=CorpUsers,DC=corp,DC=com   
+...    
+```
+
+One of the attributes, samaccountname is set to iis\_service, which tells us there will likely be a web server. Furthermore, serviceprincipalname is set to HTTP/CorpWebServer.corp.com
+
+## Authentication
+
+### NTLM Authentication
+
+NTLM Authentication is used when a client authenticates to a server by IP instead of hostname. The NTLM authentication protocol has 7 steps:
+
+<figure><img src=".gitbook/assets/image (1).png" alt=""><figcaption></figcaption></figure>
+
+1. The client computer calculates a hash, referred to as the NTLM hash, from the user's password.
+2. The client sends the username(stored in plaintext) to the server.
+3. The client receives a **nonce** value from the server. The nonce value is randomized.
+4. The client will encrypt the nonce with the NTLM hash and send that encryption, referred to as the "response" to the server.
+5. The server will forward the username, nonce value, and the encrypted nonce to the Domain Controller.&#x20;
+6. The Domain Controller then encrypts the nonce with the NTLM hash of the user(because it knows the NTLM hashes of all users)
+7. It is now trivial to validate whether the response and value it encrypted are equal. If so, the authentication request is successful.
+
+### Kerberos Authentication
+
+While NTLM works by challenge and response, Kerberos uses a ticket system. At high level,s Kerberos client authentication to a service in AD uses a domain controller in the role of a key distribution center, or KDC.
+
+<figure><img src=".gitbook/assets/image.png" alt=""><figcaption></figcaption></figure>
+
+1. When a user logs on, a request is send to the domain controller. This DC has the role of KDC and maintains the Authentication Server service. This request contains a time stamp that is encrypted use a hash from the username and password of the user.
+2. When this is received by the domain controller, it attempts to decrypt the time stamp with the hash. If the decryption process is successful, the authentication is considered successful. It will send an Authentication Server Reply that contains a session key and a Ticket Granting Ticket. The Ticket Granting Ticket cannot be decrypted by the client.
+3. If the user wants to access domain resources, such as a network share
