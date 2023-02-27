@@ -288,7 +288,7 @@ We can see that Adam is the only member.
 
 We want to find currently logged in users now, since we can find passwords or other loot in the cache and steal them.
 
-<figure><img src=".gitbook/assets/image (1) (2).png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../.gitbook/assets/image (1) (2).png" alt=""><figcaption></figcaption></figure>
 
 If we manage to compromise a Domain Admin, we have essentially compromised the whole domain. However, we can also compromise other accounts or machines. Note in the picture above that we can compromise Bob, then Alice, then Jeff.&#x20;
 
@@ -366,7 +366,7 @@ One of the attributes, samaccountname is set to iis\_service, which tells us the
 
 NTLM Authentication is used when a client authenticates to a server by IP instead of hostname. The NTLM authentication protocol has 7 steps:
 
-<figure><img src=".gitbook/assets/image.png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../.gitbook/assets/image.png" alt=""><figcaption></figcaption></figure>
 
 1. The client computer calculates a hash, referred to as the NTLM hash, from the user's password.
 2. The client sends the username(stored in plaintext) to the server.
@@ -380,7 +380,7 @@ NTLM Authentication is used when a client authenticates to a server by IP instea
 
 While NTLM works by challenge and response, Kerberos uses a ticket system. At high level,s Kerberos client authentication to a service in AD uses a domain controller in the role of a key distribution center, or KDC.
 
-<figure><img src=".gitbook/assets/image (4).png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../.gitbook/assets/image (4).png" alt=""><figcaption></figcaption></figure>
 
 1. When a user logs on, a request is send to the domain controller. This DC has the role of KDC and maintains the Authentication Server service. This request contains a time stamp that is encrypted use a hash from the username and password of the user.
 2. When this is received by the domain controller, it attempts to decrypt the time stamp with the hash. If the decryption process is successful, the authentication is considered successful. It will send an Authentication Server Reply that contains a session key and a Ticket Granting Ticket(TGT). The Ticket Granting Ticket cannot be decrypted by the client.
@@ -753,7 +753,7 @@ mimikatz # lsadump::dcsync /user:Administrator
 
 Enumerate all the domains and find a DNS lookup webpage on the 192.168.xxx.58 IP. We can then inject command into the search bar with the & operator.&#x20;
 
-<figure><img src=".gitbook/assets/image (3).png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../.gitbook/assets/image (3).png" alt=""><figcaption></figcaption></figure>
 
 &#x20;It is then possible to upload a reverse shell using a python web server and powershell on the target machine.
 

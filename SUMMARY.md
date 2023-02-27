@@ -2,7 +2,6 @@
 
 * [CTF Writeups](README.md)
 * [Reference](reference.md)
-* [Chapter 21 - AD](chapter-21-ad.md)
 
 ## OSCP
 
@@ -12,6 +11,8 @@
   * [SMTP Enumeration](oscp/active-information-gathering/smtp-enumeration.md)
   * [SNMP Enumeration](oscp/active-information-gathering/snmp-enumeration.md)
 * [Alice](oscp/alice.md)
+* [Chapter 21 - AD](oscp/chapter-21-ad.md)
+* [Checking for Bad Characters](oscp/checking-for-bad-characters.md)
 
 ## Miscellaneous
 
