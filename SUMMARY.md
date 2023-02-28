@@ -13,6 +13,7 @@
 * [Alice](oscp/alice.md)
 * [Chapter 21 - AD](chapter-21-ad.md)
 * [Checking for Bad Characters](oscp/checking-for-bad-characters.md)
+* [Windows Buffer Overflow](oscp/windows-buffer-overflow.md)
 
 ## Miscellaneous
 
