@@ -14,6 +14,7 @@
 * [Chapter 21 - AD](chapter-21-ad.md)
 * [Checking for Bad Characters](oscp/checking-for-bad-characters.md)
 * [Windows Buffer Overflow](oscp/windows-buffer-overflow.md)
+* [10.11.1.71](oscp/10.11.1.71.md)
 
 ## Miscellaneous
 

