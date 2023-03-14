@@ -15,6 +15,11 @@
 * [Checking for Bad Characters](oscp/checking-for-bad-characters.md)
 * [Windows Buffer Overflow](oscp/windows-buffer-overflow.md)
 * [10.11.1.71](oscp/10.11.1.71.md)
+* [10.11.1.146 - Susie](oscp/10.11.1.146-susie.md)
+* [10.11.1.217 - Hotline](oscp/10.11.1.217-hotline.md)
+* [10.11.1.222 - Chris](oscp/10.11.1.222-chris.md)
+* [10.11.1.231](oscp/10.11.1.231.md)
+* [Enumeration](oscp/enumeration.md)
 
 ## Miscellaneous
 

