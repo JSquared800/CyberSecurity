@@ -366,7 +366,7 @@ One of the attributes, samaccountname is set to iis\_service, which tells us the
 
 NTLM Authentication is used when a client authenticates to a server by IP instead of hostname. The NTLM authentication protocol has 7 steps:
 
-<figure><img src=".gitbook/assets/image.png" alt=""><figcaption></figcaption></figure>
+<figure><img src=".gitbook/assets/image (8).png" alt=""><figcaption></figcaption></figure>
 
 1. The client computer calculates a hash, referred to as the NTLM hash, from the user's password.
 2. The client sends the username(stored in plaintext) to the server.
@@ -753,7 +753,7 @@ mimikatz # lsadump::dcsync /user:Administrator
 
 Enumerate all the domains and find a DNS lookup webpage on the 192.168.xxx.58 IP. We can then inject command into the search bar with the & operator.&#x20;
 
-<figure><img src=".gitbook/assets/image (3).png" alt=""><figcaption></figcaption></figure>
+<figure><img src=".gitbook/assets/image (3) (2).png" alt=""><figcaption></figcaption></figure>
 
 &#x20;It is then possible to upload a reverse shell using a python web server and powershell on the target machine.
 

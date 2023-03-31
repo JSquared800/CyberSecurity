@@ -28,7 +28,7 @@ badchars+=b"\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7\xf8\xf9\xfa\xfb\xfc\xfd\xfe\xff"
 
 Remove x00 by default and probably x0a, and then look where the string of where it terminates to remove that bad character.
 
-<figure><img src="../.gitbook/assets/image (1).png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../.gitbook/assets/image (1) (1).png" alt=""><figcaption></figcaption></figure>
 
 You can see that after 0x09, the string of bytes terminates, so you can conclude that 0x0a is a bad character. Once you eliminate all of those, you can move onto shellcode.
 
